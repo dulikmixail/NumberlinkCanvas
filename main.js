@@ -1,6 +1,15 @@
 var body = document.getElementById("body");
-var width = 360;
-var height = 640;
+var height;
+var width;
+if (screen.width < screen.height) {
+    //вертикальная ориентация (смартфоны, планшеты)
+    height = screen.width * 16/9;
+    width = screen.width;
+} else {
+    //гозизонтальная ориентация (PC)
+    height = screen.height;
+    width = screen.height * 9/16
+}
 
 var x = 10;
 var y = 10;
@@ -170,7 +179,7 @@ function viewerPoints(cells) {
         if (cells[i].point) {
             if (cells[i].color) {
                 o2.ctx.fillStyle = cells[i].color;
-                o2.ctx.fillRect(cells[i].x,cells[i].y,cells[i].size,cells[i].size);
+                o2.ctx.fillRect(cells[i].x, cells[i].y, cells[i].size, cells[i].size);
             }
             o3.ctx.textBaseline = "middle";
             o3.ctx.textAlign = "center";
