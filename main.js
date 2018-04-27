@@ -1,28 +1,41 @@
 var body = document.getElementById("body");
+var html = document.getElementById("html");
 var height;
 var width;
+var isMouseDown;
+var loadedLevel;
+var loadedCells;
+var selectedCell;
+var selectedCells;
+var cellSpacing;
+var whField;
+var whBox;
+var whCell;
+var wStepLine;
+
+body.style.overflow = "hidden";
+
+
 if (screen.width < screen.height) {
     //вертикальная ориентация (смартфоны, планшеты)
-    height = screen.width * 16/9;
+    height = screen.width * 16 / 9;
     width = screen.width;
 } else {
     //гозизонтальная ориентация (PC)
     height = screen.height;
-    width = screen.height * 9/16
+    width = screen.height * 9 / 16
 }
-
-var x = 10;
-var y = 10;
 
 function Level(size, points) {
     this.size = size;
     this.points = points;
 }
 
-function Point(key, value) {
-    this.key = key - 1;
+function Point(key1, key2, value, color) {
+    this.key1 = key1 - 1;
+    this.key2 = key2 - 1;
     this.value = value;
-    this.color = false;
+    this.color = color !== undefined ? color : false;
 }
 
 function Cell() {
@@ -32,66 +45,56 @@ function Cell() {
     this.yCenter = 0;
     this.size = 1;
     this.color = false;
+    this.index = 0;
+    this.point = false;
     this.center = function () {
         return {
             x: this.x + this.size / 2,
             y: this.y + this.size / 2
         };
-    },
-        this.point = false
+    }
 }
 
 
 var lvl1 = new Level(
     5,
     [
-        new Point(1, 3),
-        new Point(5, 2),
-        new Point(6, 1),
-        new Point(8, 2),
-        new Point(9, 1),
-        new Point(14, 3),
-        new Point(21, 4),
-        new Point(25, 4)
+        new Point(6, 9, 1, "rgb(230, 129, 151)"),
+        new Point(5, 8, 2, "rgb(201, 230, 129)"),
+        new Point(1, 14, 3, "rgb(157, 129, 230)"),
+        new Point(21, 25, 4, "rgb(129, 230, 207)")
     ]
 );
 
 var lvl2 = new Level(
     5,
     [
-        new Point(1, 3),
-        new Point(2, 1),
-        new Point(4, 2),
-        new Point(9, 4),
-        new Point(11, 4),
-        new Point(12, 3),
-        new Point(17, 1),
-        new Point(25, 2)
+        new Point(2, 17, 1, "rgb(30, 179, 217)"),
+        new Point(4, 25, 2, "rgb(161, 30, 217)"),
+        new Point(1, 12, 3, "rgb(217, 68, 30)"),
+        new Point(9, 11, 4, "rgb(86, 217, 30)")
     ]
 );
 
 var lvl3 = new Level(
     7,
     [
-        new Point(3, 1),
-        new Point(4, 2),
-        new Point(7, 2),
-        new Point(9, 4),
-        new Point(10, 3),
-        new Point(14, 3),
-        new Point(17, 5),
-        new Point(20, 6),
-        new Point(25, 4),
-        new Point(27, 7),
-        new Point(30, 5),
-        new Point(36, 1),
-        new Point(43, 7),
-        new Point(45, 6)
+        new Point(3, 36, 1, "rgb(92, 57, 225)"),
+        new Point(4, 7, 2, "rgb(190, 225, 57)"),
+        new Point(10, 14, 3, "rgb(118, 52, 154)"),
+        new Point(9, 25, 4, "rgb(154, 67, 52)"),
+        new Point(17, 30, 5, "rgb(52, 139, 154)"),
+        new Point(20, 45, 6, "rgb(88, 154, 52)"),
+        new Point(27, 43, 7, "rgb(161, 139, 31)")
     ]
 );
 
+
+html.style.width = width + "px";
+html.style.height = height + "px";
 body.style.width = width + "px";
 body.style.height = height + "px";
+
 
 function Canv() {
     this.canv = false;
@@ -119,22 +122,26 @@ var o1 = createCanv(width, height);
 o1.ctx.fillStyle = "rgb(255,100,100)";
 o1.ctx.fillRect(0, 0, 50, 50);
 
+
 var o2 = createCanv(width, width, (height - width) / 2);
 o2.ctx.fillStyle = "rgb(255,100,100)";
 o2.ctx.fillRect(20, 20, 100, 20);
 
 var o3 = createCanv(width, width, (height - width) / 2);
+
+var o100 = createCanv(width, width, (height - width) / 2);
+
 // o3.ctx.fillStyle = "rgb(255,100,100)";
 // o3.ctx.fillRect(20, 20, 100, 20);
 
 
 function factoryField(sizeField) {
-    console.log(o2.canv.width);
     var cells = [];
-    var cellSpacing = 20 / sizeField;
-    var whField = o2.canv.width;
-    var whBox = (whField - cellSpacing) / sizeField;
-    var whCell = whBox - cellSpacing;
+    cellSpacing = 20 / sizeField;
+    whField = o2.canv.width;
+    whBox = (whField - cellSpacing) / sizeField;
+    whCell = whBox - cellSpacing;
+    wStepLine = 0.4 * whBox;
     var i = 0;
 
     for (var y = cellSpacing; y < (whField - whBox / 2); y += whBox) {
@@ -144,6 +151,7 @@ function factoryField(sizeField) {
             cell.x = x;
             cell.y = y;
             cell.color = "rgb(255,255,180)";
+            cell.index = i;
             cells[i] = cell;
         }
     }
@@ -158,10 +166,11 @@ function createField(cells) {
     }
 }
 
-// createField(factoryField(6));
 
 function loadLevel(lvl) {
+    loadedLevel = lvl;
     var cells = factoryField(lvl.size);
+    loadedCells = cells;
     createField(cells);
     loadPoint(cells, lvl.points);
     viewerPoints(cells);
@@ -169,8 +178,10 @@ function loadLevel(lvl) {
 
 function loadPoint(cells, points) {
     for (var i = 0; i < points.length; i++) {
-        cells[points[i].key].point = points[i];
-        cells[points[i].key].color = "red";
+        cells[points[i].key1].point = points[i];
+        cells[points[i].key1].color = points[i].color;
+        cells[points[i].key2].point = points[i];
+        cells[points[i].key2].color = points[i].color;
     }
 }
 
@@ -190,40 +201,10 @@ function viewerPoints(cells) {
     }
 }
 
-loadLevel(lvl1);
+loadLevel(lvl2);
 
 
-// var gField = {
-//     width: canv.width*0.9,
-//     height: canv.width*0.9
-// };
-//
-//
-//
-//
-
-//
-
-//
-
-//
-// var drawRect = function () {
-//     ctx.clearRect(0, 0, canv.width, canv.height);
-//     ctx.fillRect(x, y, 50, 50)
-// };
-//
-// var nextGameStep = (function () {
-//     return requestAnimationFrame ||
-//         webkitRequestAnimationFrame ||
-//         mozRequestAnimationFrame ||
-//         oRequestAnimationFrame ||
-//         msRequestAnimationFrame ||
-//         function (callback) {
-//             window.setTimeout(callback, 1000 / 60)
-//         }
-// })();
-
-var launchFullScreen = function (element) {
+function launchFullScreen(element) {
     if (element.requestFullScreen) {
         element.requestFullScreen()
     } else if (element.webkitRequestFullScreen) {
@@ -237,36 +218,144 @@ var launchFullScreen = function (element) {
     } else {
         alert("Для елемента " + element.toString() + " недоступен полноэкранный режим")
     }
+}
+
+var nextGameStep = (function () {
+    return requestAnimationFrame ||
+        webkitRequestAnimationFrame ||
+        mozRequestAnimationFrame ||
+        oRequestAnimationFrame ||
+        msRequestAnimationFrame ||
+        function (callback) {
+            window.setTimeout(callback, 1000 / 60)
+        }
+})();
+
+function drawRect() {
+    o2.ctx.clearRect(0, 0, 50, 50);
+    o2.ctx.fillRect(0, 0, 50, 50)
 };
 
-body.onclick = function () {
-    // launchFullScreen(o1.canv);
-    launchFullScreen(body);
-};
+// body.onclick = function () {
+// //     // launchFullScreen(o1.canv);
+// //     launchFullScreen(body);
+// // };
 
 
+function gameEngineStart(callback) {
+    gameEngine = callback;
+    gameEngineStep();
+}
+
+function gameEngineStep() {
+    gameEngine();
+    nextGameStep(gameEngineStep);
+}
+
+function setGameEgine(callback) {
+    gameEngine = callback;
+}
+
+// gameEngineStart(gameLoopRight);
+
+
+function clickedCell(e) {
+    for (var i = 0; i < loadedCells.length; i++) {
+        if (loadedCells[i].point) {
+            if (
+                loadedCells[i].x < e.offsetX &&
+                loadedCells[i].y < e.offsetY &&
+                loadedCells[i].x + loadedCells[i].size > e.offsetX &&
+                loadedCells[i].y + loadedCells[i].size > e.offsetY
+            ) {
+                selectedCell = loadedCells[i];
+            }
+        }
+
+    }
+    if (selectedCell) {
+        o2.ctx.fillStyle = "red";
+        o2.ctx.clearRect(selectedCell.x, selectedCell.y, selectedCell.size, selectedCell.size);
+        o2.ctx.fillRect(selectedCell.x, selectedCell.y, selectedCell.size, selectedCell.size);
+    }
+
+}
+
+function unClickedCell() {
+    o2.ctx.fillStyle = selectedCell.color;
+    o2.ctx.clearRect(selectedCell.x, selectedCell.y, selectedCell.size, selectedCell.size);
+    o2.ctx.fillRect(selectedCell.x, selectedCell.y, selectedCell.size, selectedCell.size);
+    selectedCell = false;
+}
+
+
+function clicked(e) {
+    isMouseDown = true;
+    clickedCell(e);
+}
+
+function unClicked(e) {
+    isMouseDown = false;
+    unClickedCell();
+}
+
+function baseStep(startCell, xEnd, yEnd) {
+    var x = startCell.center().x;
+    var y = startCell.center().y;
+    o2.ctx.beginPath();
+    o2.ctx.moveTo(x, y);
+    o2.ctx.lineTo(xEnd, yEnd);
+    o2.ctx.lineWidth = wStepLine;
+    o2.ctx.stroke();
+}
+
+function rightStep(startCell) {
+    o2.ctx.fillStyle = "black";
+    baseStep(startCell, loadedCells[startCell.index + 1].center().x, loadedCells[startCell.index + 1].center().y);
+}
+
+function leftStep(startCell) {
+    o2.ctx.fillStyle = "black";
+    var x = startCell.center().x;
+    var y = startCell.center().y;
+    baseStep(startCell, loadedCells[startCell.index - 1].center().x, loadedCells[startCell.index - 1].center().y);
+}
+
+rightStep(loadedCells[3]);
+
+leftStep(loadedCells[5]);
+
+// function findCellByMousePozition(x,y){
 //
-// var gameEngineStart = function (callback) {
-//     gameEngine = callback;
-//     gameEngineStep();
-// };
+// }
+
+
+o100.canv.addEventListener("mousedown", clicked);
+// o100.canv.addEventListener("touchstart", clicked);
+
+o100.canv.addEventListener("mouseup", unClicked);
+// o100.canv.addEventListener("touchend", unClicked);
+// o100.canv.addEventListener("mousemove", printMouseLine);
+// o100.canv.addEventListener("mousedown", printMouseLine);
 //
-// var gameEngineStep = function () {
-//     gameEngine();
-//     nextGameStep(gameEngineStep);
-// };
+// o100.ctx.lineWidth = 2;
 //
-// var setGameEgine = function (callback) {
-//     gameEngine = callback;
-// };
+// function printMouseLine(e) {
+//     if (isMouseDown) {
+//         o100.ctx.lineTo(e.offsetX, e.offsetY);
+//         o100.ctx.stroke();
 //
-// var gameLoopRight = function () {
-//     drawRect();
-//     x += 1;
-//     if (x >= 250) {
-//         setGameEgine(gameLoopLeft);
+//         o100.ctx.beginPath();
+//         o100.ctx.arc(e.offsetX, e.offsetY, 1, 0, Math.PI * 2);
+//         o100.ctx.fill();
+//
+//         o100.ctx.beginPath();
+//         o100.ctx.moveTo(e.offsetX, e.offsetY);
 //     }
-// };
+//
+// }
+
+
 //
 // var gameLoopLeft = function () {
 //     drawRect();
@@ -276,7 +365,7 @@ body.onclick = function () {
 //     }
 // };
 //
-// // gameEngineStart(gameLoopRight);
+
 //
 // var loadAudio = function (arr) {
 //     var audio = document.createElement("audio");
